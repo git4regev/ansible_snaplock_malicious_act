@@ -32,7 +32,7 @@
 
   - name: Build a list of all NAS volumes on production cluster
     set_fact:
-      nas_volume_list: "{{ nas_volume_list }} + [ '{{ item.value.volume_id_attributes.name }}' ]"
+      nas_volume_list: "{{ nas_volume_list | combine({'prod_svm': item.value.volume_id_attributes.owning_vserver_name, 'prod_volume': item.value.volume_id_attributes.name}) }}"
     no_log: true
     with_dict:
       "{{ prod_volume_info.ontap_info['volume_info'] }}"
