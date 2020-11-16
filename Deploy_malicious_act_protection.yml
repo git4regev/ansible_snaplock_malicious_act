@@ -1,0 +1,73 @@
+# Pre-reqs:
+#   1. prod and protection SVMs created and peered for replication
+#   2. Snaplock compliance-clock initialized on protection cluster
+#   3. A dedicated job schedule is created before-hand (i.e. 1min-snap-ransomware)
+
+---
+- name: Protect Snapshots from Malicious Activity using SnapLock for SnapVault
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - netapp.ontap
+  vars_files:
+    - immutable_backups_config.yml
+  vars:
+    login: &login
+      username: "{{ ontap_username }}"
+      password: "{{ ontap_password }}"
+      https: true
+      validate_certs: false
+
+  tasks:
+  - name: Gather volume facts from production ONTAP system
+    na_ontap_info:
+      state: info
+      hostname: "{{ prod_cluster }}"
+      gather_subset:
+        - "volume_info"
+        - "snapshot_policy_info"
+      <<: *login
+    register: prod_volume_info
+
+  - name: Create SnapLock Aggregate
+    na_ontap_aggregate:
+      state: present
+      service_state: online
+      name: "{{ protection_snaplock_aggr }}"
+      disk_count: "{{ protection_snaplock_aggr_diskcount }}"
+      nodes: 
+        - "{{ protection_node }}"
+      raid_type: "{{ protection_snaplock_aggr_raidtype }}"
+      raid_size: "{{ protection_snaplock_aggr_raidsize }}"
+      wait_for_online: true
+      snaplock_type: "{{ snaplock_type }}"
+      hostname: "{{ protection_cluster }}"
+      <<: *login
+
+  - name: Update SVM svm_protect resource allocation with new snaplock aggregate
+    na_ontap_svm:
+      state: present
+      name: "{{ protection_svm }}"
+      aggr_list:
+        - "{{ protection_snaplock_aggr }}"
+      hostname: "{{ protection_cluster }}"
+      use_rest: never # in version 20.11.0 always/auto will result with error message "REST API does not support modify of aggr_list"
+      <<: *login
+
+  - name: Create SnapMirror policy on protection svm
+    na_ontap_snapmirror_policy:
+      state: present
+      vserver: "{{ protection_svm }}"
+      policy_name: "{{ snapvault_policy }}"
+      policy_type: "vault"
+      snapmirror_label: "{{ snapshot_snapvault_label }}"
+      keep: "{{ snapvault_snapshots_to_keep }}"
+      use_rest: never
+      hostname: "{{ protection_cluster }}"
+      <<: *login
+
+  - include_tasks: Malicious_act_protection_helper.yml # This way we loop across multiple tasks as a block
+    with_items:
+      - "{{ prod_volumes }}"
+    loop_control:
+      loop_var: volume

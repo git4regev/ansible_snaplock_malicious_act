@@ -1,0 +1,30 @@
+# Authentication Information
+ontap_username: admin                # In an Ansible Tower/AWX deployment this information would be vaulted
+ontap_password: Netapp1!             # In an Ansible Tower/AWX deployment this information would be vaulted
+
+# Source Information (data to be protected)
+prod_cluster: cluster1               # Source ONTAP cluster
+prod_volumes:                             # A list of source ONTAP volumes to protect. Leave list empty to protect ALL NAS volumes
+  - { prod_svm: svm_prod, prod_volume: vol_data }
+
+# Destination Information (system being the target for the SnapLock for SnapVault relationship)
+protection_cluster: cluster2                          # Destination ONTAP cluster
+protection_node: cluster2-01                          # Destination ONTAP cluster node (where SnapLock aggregate will be created)
+protection_svm: svm_protect                           # Destination ONTAP SVM
+protection_volume_suffix: "_secure_backup"            # Destination ONTAP Volume name suffix
+protection_volume: "{{ prod_volume }}_secure_backup"  # Destination ONTAP volume
+protection_snaplock_aggr: cluster2_01_SSD_SnapLockEnt # Destination SnapLock Aggregate name
+protection_snaplock_aggr_diskcount: 8                 # Number of disks to use in SnapLock aggregate
+protection_snaplock_aggr_raidtype: raid_dp            # RAID type to use with SnapLock aggregate
+protection_snaplock_aggr_raidsize: 24                 # Max RAID group size to use with SnapLock aggregate
+
+# SnapVault Information
+prod_volume_snapshot_schedule: 1min             # Schedule name to add to the snapshot policy for protected snapshots (should already exist)
+snapshot_snapvault_label: ransomware            # SnapMirror label to add to schedule for protected snapshots
+snapvault_policy: vault_secured_snapshot_policy # SnapVault replication policy
+snapvault_snapshots_to_keep: 10                 # How many snapshots to keep on the destination SnapVault volume
+snapvault_schedule: hourly                      # SnapVault replication schedule
+
+# SnapLock Information
+snapshot_default_retention_period: "3 minutes"  # Retention period for Vaulted Snapshots
+snaplock_type: "enterprise"                     # SnapLock type (enterprise or compliance)

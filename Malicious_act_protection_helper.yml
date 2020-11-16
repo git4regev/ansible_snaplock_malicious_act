@@ -1,0 +1,185 @@
+# This file contains tasks that are part of a loop iteration called by the Deploy_malicious_act_protection.yml playbook.
+# This way we loop across multiple tasks as a single block.
+
+---
+- name: Declare temporary variable
+  set_fact:
+    snapshot_policy_schedule_names: []
+
+- name: Declare temporary variable
+  set_fact:
+    snapshot_policy_schedule_labels: []
+
+- name: Declare temporary variable
+  set_fact:
+    snapshot_policy_schedule_counts: []
+
+- name: Declare temporary variable
+  set_fact:
+    snapshot_policy_schedule_prefixes: []
+
+- name: Find production volume size
+  set_fact:
+    prod_volume_size: "{{ item.value.volume_space_attributes.size }}"
+  no_log: true
+  with_dict:
+    "{{ prod_volume_info.ontap_info['volume_info'] }}"
+  when: "item.value.volume_id_attributes.name == volume.prod_volume"
+
+- name: Find production volume snapshot policy
+  set_fact:
+    prod_snapshot_policy: "{{ item.value.volume_snapshot_attributes.snapshot_policy }}"
+  no_log: true
+  with_dict:
+    "{{ prod_volume_info.ontap_info['volume_info'] }}"
+  when: "item.value.volume_id_attributes.name == volume.prod_volume"
+
+- name: Find production volume security style
+  set_fact:
+    prod_volume_security_style: "{{ item.value.volume_security_attributes.style }}"
+  no_log: true
+  with_dict:
+    "{{ prod_volume_info.ontap_info['volume_info'] }}"
+  when: "item.value.volume_id_attributes.name == volume.prod_volume"
+
+- name: Find schedule information for production volume snapshot policy
+  set_fact:
+    snapshot_policy_schedule_list: "{{ item.value.snapshot_policy_schedules.snapshot_schedule_info }}"
+  no_log: true
+  with_dict:
+    "{{ prod_volume_info.ontap_info['snapshot_policy_info'] }}"
+  when: "item.value.policy == prod_snapshot_policy"
+
+- name: Get names of schedules for snapshot policy
+  set_fact:
+    snapshot_policy_schedule_names: "{{ snapshot_policy_schedule_names }} + [ '{{ item.schedule }}' ]"
+  no_log: true
+  with_items:
+    "{{ snapshot_policy_schedule_list }}"
+
+- name: Get counts of schedules for snapshot policy
+  set_fact:
+    snapshot_policy_schedule_counts: "{{ snapshot_policy_schedule_counts }} + [ '{{ item.count }}' ]"
+  no_log: true
+  with_items:
+    "{{ snapshot_policy_schedule_list }}"
+
+- name: Get prefixes of schedules for snapshot policy
+  set_fact:
+    snapshot_policy_schedule_prefixes: "{{ snapshot_policy_schedule_prefixes }} + [ '{{ item.prefix }}' ]"
+  no_log: true
+  with_items:
+    "{{ snapshot_policy_schedule_list }}"
+
+- name: Get labels of schedules for snapshot policy
+  set_fact:
+    snapshot_policy_schedule_labels: "{{ snapshot_policy_schedule_labels }} + [ '{{ item.snapmirror_label | replace('-','') }}' ]"
+  no_log: true
+  with_items:
+    "{{ snapshot_policy_schedule_list }}"
+
+- name: Update schedule lists with new vaulting schedule
+  set_fact:
+    snapshot_policy_schedule_counts: "{{ snapshot_policy_schedule_counts }} + [ '{{ snapvault_snapshots_to_keep }}' ]"
+  no_log: true
+  when: prod_volume_snapshot_schedule not in snapshot_policy_schedule_names
+
+- name: Update schedule lists with new vaulting schedule
+  set_fact:
+    snapshot_policy_schedule_prefixes: "{{ snapshot_policy_schedule_prefixes }} + [ '{{ prod_volume_snapshot_schedule }}' ]"
+  no_log: true
+  when: prod_volume_snapshot_schedule not in snapshot_policy_schedule_names
+
+- name: Update schedule lists with new vaulting schedule
+  set_fact:
+    snapshot_policy_schedule_labels: "{{ snapshot_policy_schedule_labels }} + [ '{{ snapshot_snapvault_label }}' ]"
+  no_log: true
+  when: prod_volume_snapshot_schedule not in snapshot_policy_schedule_names
+
+- name: Update schedule lists with new vaulting schedule
+  set_fact:
+    snapshot_policy_schedule_names: "{{ snapshot_policy_schedule_names }} + [ '{{ prod_volume_snapshot_schedule }}' ]"
+  no_log: true
+  when: prod_volume_snapshot_schedule not in snapshot_policy_schedule_names
+
+- name: Update Snapshot Policy with new schedule
+  na_ontap_snapshot_policy:
+    state: present
+    name: "{{ prod_snapshot_policy }}"
+    enabled: true
+    schedule: "{{ snapshot_policy_schedule_names }}"
+    prefix: "{{ snapshot_policy_schedule_prefixes }}"
+    count: "{{ snapshot_policy_schedule_counts }}"
+    snapmirror_label: "{{ snapshot_policy_schedule_labels }}"
+    hostname: "{{ prod_cluster }}"
+    <<: *login
+
+- name: Create Data Protection Volume
+  na_ontap_volume:
+    state: present
+    type: dp
+    encrypt: true
+    name: "{{ volume.prod_volume }}{{ protection_volume_suffix }}"
+    aggregate_name: "{{ protection_snaplock_aggr }}"
+    size: "{{ prod_volume_size }}"
+    size_unit: bytes
+    space_guarantee: none
+    volume_security_style: "{{ prod_volume_security_style }}"
+    tiering_policy: auto
+    policy: default
+    percent_snapshot_space: 0
+    vserver: "{{ protection_svm }}"
+    wait_for_completion: True
+    comment: ansible created volume for secured backups
+    hostname: "{{ protection_cluster }}"
+    <<: *login
+
+- name: Set volume snaplock retention period
+  na_ontap_volume_snaplock:
+    vserver: "{{ protection_svm }}"
+    name: "{{ volume.prod_volume }}{{ protection_volume_suffix }}"
+    default_retention_period: "{{ snapshot_default_retention_period }}"
+    hostname: "{{ protection_cluster }}"
+    <<: *login
+
+- name: Set up vaulting of data with secured protection for snapshots
+  na_ontap_snapmirror:
+    state: present
+    source_volume: "{{ volume.prod_volume }}"
+    destination_volume: "{{ volume.prod_volume }}{{ protection_volume_suffix }}"
+    source_vserver: "{{ volume.prod_svm }}"
+    destination_vserver: "{{ protection_svm }}"
+    policy: "{{ snapvault_policy }}"
+    schedule: "{{ snapvault_schedule }}"
+    hostname: "{{ protection_cluster }}"
+    <<: *login
+
+- name: Wait for replication to reach mirrored state (max wait of 3 minutes)
+  na_ontap_command:
+    hostname: "{{ protection_cluster }}"
+    command: ['snapmirror','show','-source-path',"{{ volume.prod_svm }}:{{ volume.prod_volume }}",'-destination-path',"{{ protection_svm }}:{{ volume.prod_volume }}{{ protection_volume_suffix }}"]
+    <<: *login
+  register: command_out
+  until: command_out.msg.find('Snapmirrored') != -1 and command_out.msg.find('Idle') != -1
+  retries: 18
+  delay: 10
+
+- name: Mount protected volume (add junction path)
+  na_ontap_volume:
+    state: present
+    volume_security_style: "{{ prod_volume_security_style }}"
+    hostname: "{{ protection_cluster }}"
+    vserver: "{{ protection_svm }}"
+    name: "{{ protection_volume }}"
+    junction_path: "/{{ volume.prod_volume }}{{ protection_volume_suffix }}"
+    <<: *login
+
+- name: Configure CIFS share for protection volume
+  na_ontap_cifs:
+    state: present
+    share_name: "{{ volume.prod_volume }}{{ protection_volume_suffix }}"
+    path: "/{{ volume.prod_volume }}{{ protection_volume_suffix }}"
+    vserver: "{{ protection_svm }}"
+    share_properties: browsable,oplocks,showsnapshot,show-previous-versions
+    hostname: "{{ protection_cluster }}"
+    <<: *login
