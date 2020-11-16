@@ -12,6 +12,7 @@
   vars_files:
     - immutable_backups_config.yml
   vars:
+    nas_volume_list: []
     login: &login
       username: "{{ ontap_username }}"
       password: "{{ ontap_password }}"
@@ -28,6 +29,24 @@
         - "snapshot_policy_info"
       <<: *login
     register: prod_volume_info
+
+  - name: Build a list of all NAS volumes on production cluster
+    set_fact:
+      nas_volume_list: "{{ nas_volume_list }} + [ '{{ item.value.volume_id_attributes.name }}' ]"
+    no_log: true
+    with_dict:
+      "{{ prod_volume_info.ontap_info['volume_info'] }}"
+    when:
+      - "prod_volumes == None"
+      - "item.value.volume_state_attributes.is_cluster_volume == 'true'"
+      - "item.value.volume_state_attributes.is_node_root == 'false'"
+      - "item.value.volume_state_attributes.is_vserver_root == 'false'"
+      - "item.value.volume_state_attributes.is_junction_active == 'true'"
+
+  - name: Decide if to use generated list of NAS volumes or provided list of volumes
+    set_fact:
+      prod_volumes: "{{ nas_volume_list }}"
+    when: "prod_volumes == None"
 
   - name: Create SnapLock Aggregate
     na_ontap_aggregate:
