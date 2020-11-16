@@ -2,6 +2,14 @@
 # This way we loop across multiple tasks as a single block.
 
 ---
+- name: Declare login variable
+  set_fact:
+    login: &login
+      username: "{{ ontap_username }}"
+      password: "{{ ontap_password }}"
+      https: true
+      validate_certs: false
+
 - name: Declare temporary variable
   set_fact:
     snapshot_policy_schedule_names: []
@@ -170,7 +178,7 @@
     volume_security_style: "{{ prod_volume_security_style }}"
     hostname: "{{ protection_cluster }}"
     vserver: "{{ protection_svm }}"
-    name: "{{ protection_volume }}"
+    name: "{{ volume.prod_volume }}{{ protection_volume_suffix }}"
     junction_path: "/{{ volume.prod_volume }}{{ protection_volume_suffix }}"
     <<: *login
 
