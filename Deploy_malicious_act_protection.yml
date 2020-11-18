@@ -1,3 +1,8 @@
+# Pre-reqs:
+#   1. prod and protection SVMs created and peered for replication
+#   2. Snaplock compliance-clock initialized on protection cluster
+#   3. A dedicated job schedule is created before-hand (i.e. 1min-snap-ransomware)
+
 ---
 - name: Protect Snapshots from Malicious Activity using SnapLock for SnapVault
   hosts: localhost
@@ -42,6 +47,13 @@
     set_fact:
       prod_volumes: "{{ nas_volume_list }}"
     when: "prod_volumes == None"
+
+  - name: Initialize SnapLock compliance clock on ONTAP protection node
+    na_ontap_command:
+      hostname: "{{ protection_cluster }}"
+      command: ['snaplock','compliance-clock','initialize','-node',"{{ protection_node }}"]
+      <<: *login
+    register: command_out
 
   - name: Create SnapLock Aggregate
     na_ontap_aggregate:
