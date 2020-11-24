@@ -1,0 +1,258 @@
+---
+- name: Prep lab for SnapLock for Malware Act Protection Demo
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - netapp.ontap
+  vars:
+    admin_user_name: administrator
+    admin_password: Netapp1!
+    login: &login
+      username: admin
+      password: Netapp1!
+      https: true
+      validate_certs: false
+
+  tasks:
+  - name: Get ontapi version (needed for the na_ontap_vserver_create role)
+    na_ontap_gather_facts:
+      state: info
+      hostname: cluster1
+      ontapi: 32
+      <<: *login
+
+  - name: Create new aggregate on cluster1_01
+    na_ontap_aggregate:
+      state: present
+      service_state: online
+      name: cluster1_01_SSD_1
+      disk_count: 18
+      wait_for_online: True
+      time_out: 300
+      snaplock_type: non_snaplock
+      hostname: cluster1
+      nodes:
+        - cluster1-01
+      <<: *login
+
+  - name: Create new aggregate on cluster1_02
+    na_ontap_aggregate:
+      state: present
+      service_state: online
+      name: cluster1_02_SSD_1
+      disk_count: 18
+      wait_for_online: True
+      time_out: 300
+      snaplock_type: non_snaplock
+      hostname: cluster1
+      nodes:
+        - cluster1-02
+      <<: *login
+
+  - name: Create vserver variable for na_ontap_vserver_create role
+    set_fact:
+      vservers: 
+        - { name: svm_prod, aggr: cluster1_01_SSD_1, protocol: cifs,nfs }
+
+  - name: Create vserver_dns variable for na_ontap_vserver_create role
+    set_fact:
+      vserver_dns: 
+        - { vserver: svm_prod, dns_domains: demo.netapp.com, dns_nameservers: 192.168.0.253 }
+
+  - name: Create lifs variable for na_ontap_vserver_create role
+    set_fact:
+      lifs:
+        - { name: svm_prod_data_lif_1, vserver: svm_prod, node: cluster1-01, port: e0c, protocol: cifs,nfs, address: 192.168.0.80, netmask: 255.255.255.0 }
+        - { name: svm_prod_data_lif_2, vserver: svm_prod, node: cluster1-02, port: e0c, protocol: cifs,nfs, address: 192.168.0.81, netmask: 255.255.255.0 }
+
+  - name: Create cifs variable for na_ontap_vserver_create role
+    set_fact:
+      cifs: 
+        - { vserver: svm_prod, cifs_server_name: prod, domain: demo.netapp.com, force: true }
+
+  - name: Create svm_prod SVM on cluster1
+    import_role:
+      name: na_ontap_vserver_create
+    vars:
+      netapp_hostname: cluster1
+      netapp_username: admin
+      netapp_password: Netapp1!
+      <<: *login
+
+  - name: Create new aggregate on cluster2_01
+    na_ontap_aggregate:
+      state: present
+      service_state: online
+      name: cluster2_01_SSD_1
+      disk_count: 18
+      wait_for_online: True
+      time_out: 300
+      snaplock_type: non_snaplock
+      hostname: cluster2
+      nodes:
+        - cluster2-01
+      <<: *login
+
+  - name: Create vserver variable for na_ontap_vserver_create role
+    set_fact:
+      vservers:
+        - { name: svm_protect, aggr: cluster2_01_SSD_1, protocol: cifs,nfs }
+
+  - name: Create vserver_dns variable for na_ontap_vserver_create role
+    set_fact:
+      vserver_dns:
+        - { vserver: svm_protect, dns_domains: demo.netapp.com, dns_nameservers: 192.168.0.253 }
+
+  - name: Create lif variable for na_ontap_vserver_create role
+    set_fact:
+      lifs:
+        - { name: svm_protect_data_lif_1, vserver: svm_protect, node: cluster2-01, port: e0c, protocol: cifs,nfs, address: 192.168.0.82, netmask: 255.255.255.0 }
+        - { name: svm_protect_data_lif_2, vserver: svm_protect, node: cluster2-02, port: e0c, protocol: cifs,nfs, address: 192.168.0.83, netmask: 255.255.255.0 }
+
+  - name: Create cifs variable for na_ontap_vserver_create role
+    set_fact:
+      cifs:
+        - { vserver: svm_protect, cifs_server_name: protect, domain: demo.netapp.com, force: true }
+
+  - name: Create svm_protect SVM on cluster2
+    import_role:
+      name: na_ontap_vserver_create
+    vars:
+      netapp_hostname: cluster2
+      netapp_username: admin
+      netapp_password: Netapp1!
+      <<: *login
+
+  - name: Create intercluster LIF on cluster1-01
+    na_ontap_interface:
+      state: present
+      interface_name: cluster1_01_intercluster_1
+      home_port: e0d
+      home_node: cluster1-01
+      role: intercluster
+      admin_status: up
+      address: 192.168.0.84
+      netmask: 255.255.255.0
+      vserver: cluster1
+      hostname: cluster1
+      <<: *login
+
+  - name: Create intercluster LIF on cluster1-02
+    na_ontap_interface:
+      state: present
+      interface_name: cluster1_02_intercluster_1
+      home_port: e0d
+      home_node: cluster1-02
+      role: intercluster
+      admin_status: up
+      address: 192.168.0.85
+      netmask: 255.255.255.0
+      vserver: cluster1
+      hostname: cluster1
+      <<: *login
+
+  - name: Create intercluster LIF on cluster2-01
+    na_ontap_interface:
+      state: present
+      interface_name: cluster2_01_intercluster_1
+      home_port: e0d
+      home_node: cluster2-01
+      role: intercluster
+      admin_status: up
+      address: 192.168.0.86
+      netmask: 255.255.255.0
+      vserver: cluster2
+      hostname: cluster2
+      <<: *login
+
+  - name: Create intercluster LIF on cluster2-02
+    na_ontap_interface:
+      state: present
+      interface_name: cluster2_02_intercluster_1
+      home_port: e0d
+      home_node: cluster2-02
+      role: intercluster
+      admin_status: up
+      address: 192.168.0.87
+      netmask: 255.255.255.0
+      vserver: cluster2
+      hostname: cluster2
+      <<: *login
+
+  - name: Create cluster peering between cluster1 and cluster2
+    na_ontap_cluster_peer:
+      state: present
+      source_intercluster_lifs: 192.168.0.84,192.168.0.85
+      dest_intercluster_lifs: 192.168.0.86,192.168.0.87
+      passphrase: hello_world_how_is_everyone_doing
+      hostname: cluster1
+      dest_hostname: cluster2
+      encryption_protocol_proposed: tls_psk
+      <<: *login
+
+  - name: Create SVM peering between svm_prod and svm_protect
+    na_ontap_vserver_peer:
+      state: present
+      peer_vserver: svm_protect
+      peer_cluster: cluster2
+      vserver: svm_prod
+      applications: ['snapmirror']
+      hostname: cluster1
+      dest_hostname: cluster2
+      <<: *login
+
+  - name: Create 1min schedule on cluster1
+    na_ontap_job_schedule:
+      state: present
+      name: 1min
+      job_minutes: -1
+      hostname: cluster1
+      <<: *login
+
+  - name: Increase size of svm_prod_root volume
+    na_ontap_volume:
+      state: present
+      name: svm_prod_root
+      size: 2
+      size_unit: gb
+      volume_security_style: ntfs
+      hostname: cluster1
+      vserver: svm_prod
+      <<: *login
+
+  - name: Increase size of svm_protect_root volume
+    na_ontap_volume:
+      state: present
+      name: svm_protect_root
+      size: 2
+      size_unit: gb
+      volume_security_style: ntfs
+      hostname: cluster2
+      vserver: svm_protect
+      <<: *login
+
+  - name: Create volume vol_data in svm_prod SVM
+    na_ontap_volume:
+      state: present
+      name: vol_data
+      size: 10
+      size_unit: gb
+      aggregate_name: cluster1_01_SSD_1
+      junction_path: /vol_data
+      space_guarantee: none
+      volume_security_style: ntfs
+      hostname: cluster1
+      vserver: svm_prod
+      <<: *login
+
+  - name: Create CIFS Share for vol_data
+    na_ontap_cifs:
+      state: present
+      share_name: vol_data
+      path: /vol_data
+      vserver: svm_prod
+      share_properties: browsable,oplocks
+      hostname: cluster1
+      <<: *login
+
+
