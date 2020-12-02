@@ -122,13 +122,24 @@
     hostname: "{{ prod_cluster }}"
     <<: *login
 
+- name: Find Aggregate for new protection volume
+  set_fact:
+    protection_volume_aggregate: "{{ item.value.aggregate_name }}"
+  no_log: true
+  with_dict:
+    "{{ protect_aggr_info.ontap_info['aggregate_info'] }}"
+  when:
+    - "item.value.aggr_snaplock_attributes.is_snaplock == 'true'"
+    - "item.value.aggr_snaplock_attributes.snaplock_type == snaplock_type"
+    - "(item.value.aggr_space_attributes.size_available  | int > prod_volume_size)"
+
 - name: Create Data Protection Volume
   na_ontap_volume:
     state: present
     type: dp
     encrypt: true
     name: "{{ volume.prod_volume }}{{ protection_volume_suffix }}"
-    aggregate_name: "{{ protection_snaplock_aggr }}"
+    aggregate_name: "{{ protection_volume_aggregate }}"
     size: "{{ prod_volume_size }}"
     size_unit: bytes
     space_guarantee: none

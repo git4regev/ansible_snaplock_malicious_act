@@ -1,29 +1,24 @@
 # Authentication Information
-ontap_username: <ONTAP_USERNAME> # In an Ansible Tower/AWX deployment this information would be vaulted
-ontap_password: <ONTAP_PASSWORD> # In an Ansible Tower/AWX deployment this information would be vaulted
+ontap_username: admin    # In an Ansible Tower/AWX deployment this information would be vaulted
+ontap_password: Netapp1! # In an Ansible Tower/AWX deployment this information would be vaulted
 
 # Source Information (data to be protected)
-prod_cluster: <PROD_CLUSTER_NAME> # Source ONTAP cluster
-prod_volumes:                     # A list of source ONTAP volumes to protect. Leave list empty to protect ALL NAS volumes
-  - { prod_svm: <SVM_NAME>, prod_volume: <VOLUME_NAME> }
+prod_cluster: cluster1  # Source ONTAP cluster
+prod_volumes:           # A list of source ONTAP volumes to protect. *** Leave list empty to protect ALL NAS volumes ***
+  - { prod_svm: svm_prod, prod_volume: vol_data }
 
 # Destination Information (system being the target for the SnapLock for SnapVault relationship)
-protection_cluster: <BACKUP_CLUSTER_NAME>                                # Destination ONTAP cluster
-protection_node: <BACKUP_CLUSTER_NODE_NAME>                              # Destination ONTAP cluster node (where SnapLock aggregate will be created)
-protection_svm: <BACKUP_SVM_NAME>                                        # Destination ONTAP SVM
-protection_volume_suffix: <BACKUP_VOLUME_SUFFIX_NAME>                    # Destination ONTAP Volume name will be production volume name + this suffix
-protection_snaplock_aggr: <BACKUP_SNAPLOCK_AGGR_NAME>                    # Destination SnapLock Aggregate name
-protection_snaplock_aggr_diskcount: <BACKUP_SNAPLOCK_AGGR_NUM_OF_DISKS>  # Number of disks to use in SnapLock aggregate
-protection_snaplock_aggr_raidtype: <BACKUP_SNAPLOCK_AGGR_RAID_TYPE>      # RAID type to use with SnapLock aggregate
-protection_snaplock_aggr_raidsize: <BACKUP_SNAPLOCK_AGGR_RAIDGROUP_SIZE> # Max RAID group size to use with SnapLock aggregate
+protection_cluster: cluster2                # Destination ONTAP cluster
+protection_svm: svm_protect                 # Destination ONTAP SVM
+protection_volume_suffix: _immutable_backup # Destination ONTAP Volume name will be production volume name + this suffix
 
 # SnapVault Information
-prod_volume_snapshot_schedule: <SNAPSHOT_SCHEDULE_NAME>               # Schedule name to add to the snapshot policy for protected snapshots (should already exist)
-snapshot_snapvault_label: <SNAPMIRROR_LABEL>                          # SnapMirror label to add to schedule for protected snapshots
-snapvault_policy: <SNAPMIRROR_POLICY_NAME>                            # SnapVault replication policy
-snapvault_snapshots_to_keep: <NUM_OF_SNAPS_TO_KEEP_ON_BACKUP_VOLUMES> # How many snapshots to keep on the destination SnapVault volume
-snapvault_schedule: <SNAPMIRROR_SHCEDULE_NAME>                        # SnapVault replication schedule
+prod_volume_snapshot_schedule: 1min      # Schedule name to add to the snapshot policy for protected snapshots (should already exist)
+snapshot_snapvault_label: immutable      # SnapMirror label to add to schedule for protected snapshots
+snapvault_policy: immutable_vault_policy # SnapVault replication policy
+snapvault_snapshots_to_keep: 10          # How many snapshots to keep on the destination SnapVault volume
+snapvault_schedule: hourly               # SnapVault replication schedule
 
 # SnapLock Information
-snapshot_default_retention_period: <SNAPSHOT_RETENTION_PERIOD_ON_BACKUP> # Retention period for Vaulted Snapshots, i.e. "3 minutes", "3 days", "3 months", or "3 years"
-snaplock_type: <SNAPLOCK_TYPE>                                           # SnapLock type ("enterprise" or "compliance")
+snapshot_default_retention_period: "3 minutes" # Retention period for Vaulted Snapshots, i.e. "3 minutes", "3 days", "3 months", or "3 years"
+snaplock_type: enterprise                      # SnapLock type ("enterprise" or "compliance")

@@ -1,3 +1,6 @@
+# Prior to executing this playbook, please login to the console of cluster1 and cluster2 and
+# type the following command: security keymanager onboard enable
+
 ---
 - name: Prep lab for SnapLock for Malware Act Protection Demo
   hosts: localhost
@@ -20,6 +23,20 @@
       hostname: cluster1
       ontapi: 32
       <<: *login
+
+  - name: Initialize SnapLock compliance clock on ONTAP protection node
+    na_ontap_command:
+      hostname: cluster2
+      command: ['snaplock','compliance-clock','initialize','-node','cluster2-01']
+      <<: *login
+    register: command_out
+
+  - name: Initialize SnapLock compliance clock on ONTAP protection node
+    na_ontap_command:
+      hostname: cluster2
+      command: ['snaplock','compliance-clock','initialize','-node','cluster2-02']
+      <<: *login
+    register: command_out
 
   - name: Create new aggregate on cluster1_01
     na_ontap_aggregate:
@@ -91,6 +108,21 @@
       hostname: cluster2
       nodes:
         - cluster2-01
+      <<: *login
+
+  - name: Create SnapLock Aggregate on cluster2_02
+    na_ontap_aggregate:
+      state: present
+      service_state: online
+      name: cluster2_02_SSD_SnapLockEnt_1
+      disk_count: 8
+      nodes: 
+        - cluster2-02
+      raid_type: raid_dp
+      raid_size: 24
+      wait_for_online: true
+      snaplock_type: enterprise
+      hostname: cluster2
       <<: *login
 
   - name: Create vserver variable for na_ontap_vserver_create role
@@ -256,3 +288,12 @@
       <<: *login
 
 
+#  - name: Update SVM svm_protect resource allocation with new snaplock aggregate
+#    na_ontap_svm:
+#      state: present
+#      name: "{{ protection_svm }}"
+#      aggr_list:
+#        - "{{ protection_snaplock_aggr }}"
+#      hostname: "{{ protection_cluster }}"
+#      use_rest: never # in version 20.11.0 always/auto will result with error message "REST API does not support modify of aggr_list"
+#      <<: *login

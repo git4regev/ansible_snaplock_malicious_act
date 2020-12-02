@@ -30,6 +30,15 @@
       <<: *login
     register: prod_volume_info
 
+  - name: Gather aggregate facts from protection ONTAP system
+    na_ontap_info:
+      state: info
+      hostname: "{{ protection_cluster }}"
+      gather_subset:
+        - "aggregate_info"
+      <<: *login
+    register: protect_aggr_info
+
   - name: Build a list of all NAS volumes on production cluster
     set_fact:
       nas_volume_list: "{{ nas_volume_list | combine({'prod_svm': item.value.volume_id_attributes.owning_vserver_name, 'prod_volume': item.value.volume_id_attributes.name}) }}"
@@ -47,38 +56,6 @@
     set_fact:
       prod_volumes: "{{ nas_volume_list }}"
     when: "prod_volumes == None"
-
-  - name: Initialize SnapLock compliance clock on ONTAP protection node
-    na_ontap_command:
-      hostname: "{{ protection_cluster }}"
-      command: ['snaplock','compliance-clock','initialize','-node',"{{ protection_node }}"]
-      <<: *login
-    register: command_out
-
-  - name: Create SnapLock Aggregate
-    na_ontap_aggregate:
-      state: present
-      service_state: online
-      name: "{{ protection_snaplock_aggr }}"
-      disk_count: "{{ protection_snaplock_aggr_diskcount }}"
-      nodes: 
-        - "{{ protection_node }}"
-      raid_type: "{{ protection_snaplock_aggr_raidtype }}"
-      raid_size: "{{ protection_snaplock_aggr_raidsize }}"
-      wait_for_online: true
-      snaplock_type: "{{ snaplock_type }}"
-      hostname: "{{ protection_cluster }}"
-      <<: *login
-
-  - name: Update SVM svm_protect resource allocation with new snaplock aggregate
-    na_ontap_svm:
-      state: present
-      name: "{{ protection_svm }}"
-      aggr_list:
-        - "{{ protection_snaplock_aggr }}"
-      hostname: "{{ protection_cluster }}"
-      use_rest: never # in version 20.11.0 always/auto will result with error message "REST API does not support modify of aggr_list"
-      <<: *login
 
   - name: Create SnapMirror policy on protection svm
     na_ontap_snapmirror_policy:
