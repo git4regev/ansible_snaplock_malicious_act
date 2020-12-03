@@ -270,6 +270,7 @@
       size: 10
       size_unit: gb
       aggregate_name: cluster1_01_SSD_1
+      encrypt: true
       junction_path: /vol_data
       space_guarantee: none
       volume_security_style: ntfs
