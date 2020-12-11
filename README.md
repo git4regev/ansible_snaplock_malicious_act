@@ -33,7 +33,7 @@ When combined with NetApp's Lab on Demand service, this repository delivers an e
 
 ## Demo highlights
 The lab is now ready for the demo. There is a pre-created volume called vol_data in cluster1 being protected by SnapLock for SnapVault on cluster2.
-If you wish to create additional volumes, don't forget to update the immutable_backups_config.yml IaC (Infrastructure-as-Code) file by either adding the new volumes to the (under the prod_volumes variable), or alternatively, comment out the list of volumes (but do not comment out the variable itself) to dynamically protect all NAS volumes.
+If you wish to create additional volumes, don't forget to update the immutable_backups_config.yml IaC (Infrastructure-as-Code) file by either adding the new volumes to the (under the prod_volumes variable), or alternatively, comment out the list of volumes (but do not comment out the variable itself) to dynamically protect all NAS volumes, and then re-run the Deploy_malicious_act_protection.yml Ansible playbook.
 
 When ready to demonstrate the immutable snapshot feature:
 1. Either manually (CLI, GUI, ...) update the SnapMirror relationship, or run the Deploy_malicious_act_protection.yml Ansible playbook (this will trigger a SnapMirror update for all relevant relationships)
