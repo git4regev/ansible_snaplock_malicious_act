@@ -29,5 +29,14 @@ When combined with NetApp's Lab on Demand service, this repository delivers an e
     1. Type: git clone https://github.com/git4regev/ansible_snaplock_malicious_act
     1. Type: cd ansible_snaplock_malicious_act
     1. Type: ansible-playbook prep_lab_playbook.yml
+    1. Type: ansible-playbook Deploy_malicious_act_protection.yml
 
-The lab is now ready for the demo. There is a pre-created volume called vol_data in cluster1. If you wish to create additional volumes, don't forget to update the immutable_backups_config.yml IaC (Infrastructure-as-Code) file.
+## Demo highlights
+The lab is now ready for the demo. There is a pre-created volume called vol_data in cluster1 being protected by SnapLock for SnapVault on cluster2.
+If you wish to create additional volumes, don't forget to update the immutable_backups_config.yml IaC (Infrastructure-as-Code) file by either adding the new volumes to the (under the prod_volumes variable), or alternatively, comment out the list of volumes (but do not comment out the variable itself) to dynamically protect all NAS volumes.
+
+When ready to demonstrate the immutable snapshot feature:
+1. Either manually (CLI, GUI, ...) update the SnapMirror relationship, or run the Deploy_malicious_act_protection.yml Ansible playbook (this will trigger a SnapMirror update for all relevant relationships)
+1. Either from CLI, GUI, API, ... try to delete one of the newer snapshots (on cluster2) and show that the operation will fail due to the snapshot being locked by SnapLock
+1. Either from CLI, GUI, API, ... try to delete one of the oldest snapshots (on cluster2) and that operation should succeed. Remember that unless you changed the default in the immutable_backups_config.yml IaC file, the protection retention is set to 3 minutes
+1. From CLI, show the expiration time of the snapshots by running the following command: snapshot show -vserver 
