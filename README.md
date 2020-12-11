@@ -39,4 +39,4 @@ When ready to demonstrate the immutable snapshot feature:
 1. Either manually (CLI, GUI, ...) update the SnapMirror relationship, or run the Deploy_malicious_act_protection.yml Ansible playbook (this will trigger a SnapMirror update for all relevant relationships)
 1. Either from CLI, GUI, API, ... try to delete one of the newer snapshots (on cluster2) and show that the operation will fail due to the snapshot being locked by SnapLock
 1. Either from CLI, GUI, API, ... try to delete one of the oldest snapshots (on cluster2) and that operation should succeed. Remember that unless you changed the default in the immutable_backups_config.yml IaC file, the protection retention is set to 3 minutes
-1. From CLI, show the expiration time of the snapshots (on cluster2) by running the following command: snapshot show -vserver svm_protect -volume <volume name> -fields snaplock-expiry-time,owners 
+1. From CLI, show the expiration time of the snapshots (on cluster2) by running the following command: snapshot show -vserver svm_protect -volume volume_name -fields snaplock-expiry-time,owners 
