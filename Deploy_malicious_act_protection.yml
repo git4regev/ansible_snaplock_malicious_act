@@ -39,6 +39,7 @@
     set_fact:
       nas_volume_list: "{{ nas_volume_list + [{'prod_svm': item.value.volume_id_attributes.owning_vserver_name, 'prod_volume': item.value.volume_id_attributes.name}] }}"
     no_log: true
+    ignore_errors: true
     with_dict:
       "{{ prod_volume_info.ontap_info['volume_info'] }}"
     when:
