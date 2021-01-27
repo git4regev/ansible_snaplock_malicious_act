@@ -20,8 +20,7 @@ When combined with NetApp's Lab on Demand service, this repository delivers an e
     1. When provided with the PuTTY Security Alert pop-up chose Yes
     1. Log in as root with Netapp1! as the password
     1. Type: yum install -y ansible
-    1. Type: curl https://bootstrap.pypa.io/get-pip.py - get-pip.py
-    1. Type: python get-pip.py
+    1. Type: yum install -y python-pip
     1. Type: pip install netapp-lib
     1. Type: ansible-galaxy collection install netapp.ontap
     1. Type: mkdir Ansible
