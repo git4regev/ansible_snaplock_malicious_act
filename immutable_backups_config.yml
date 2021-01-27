@@ -16,9 +16,9 @@ protection_volume_suffix: _immutable_backup # Destination ONTAP Volume name will
 prod_volume_snapshot_schedule: 1min      # Schedule name to add to the snapshot policy for protected snapshots (should already exist)
 snapshot_snapvault_label: immutable      # SnapMirror label to add to schedule for protected snapshots
 snapvault_policy: immutable_vault_policy # SnapVault replication policy
-snapvault_snapshots_to_keep: 10          # How many snapshots to keep on the destination SnapVault volume
+snapvault_snapshots_to_keep: 20          # How many snapshots to keep on the destination SnapVault volume
 snapvault_schedule: hourly               # SnapVault replication schedule
 
 # SnapLock Information
-snapshot_default_retention_period: "3 minutes" # Retention period for Vaulted Snapshots, i.e. "3 minutes", "3 days", "3 months", or "3 years"
-snaplock_type: enterprise                      # SnapLock type ("enterprise" or "compliance")
+snapshot_default_retention_period: "5 minutes" # Retention period for Vaulted Snapshots, i.e. "3 minutes", "3 days", "3 months", or "3 years"
+snaplock_type: compliance                      # SnapLock type ("enterprise" or "compliance")
