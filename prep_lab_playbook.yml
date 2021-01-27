@@ -114,14 +114,14 @@
     na_ontap_aggregate:
       state: present
       service_state: online
-      name: cluster2_02_SSD_SnapLockEnt_1
+      name: cluster2_02_SSD_SnapLockComp_1
       disk_count: 8
       nodes: 
         - cluster2-02
       raid_type: raid_dp
       raid_size: 24
       wait_for_online: true
-      snaplock_type: enterprise
+      snaplock_type: compliance
       hostname: cluster2
       <<: *login
 
